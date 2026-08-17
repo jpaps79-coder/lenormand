@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-title" content="Lenormand">
 <meta name="theme-color" content="#ede0c0">
 <style>html,body{margin:0;padding:0;}</style>
+</head>
+<body>
+<div id="root"></div>
 <script>
 /**
  * @license React
@@ -314,9 +317,6 @@ var d=null!=c&&c.hydratedSources||null,e=!1,f="",g=aj;null!==c&&void 0!==c&&(!0=
 function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmountComponentAtNode=function(a){if(!Vd(a))throw Error(m(40));return a._reactRootContainer?(yb(function(){Wd(null,null,a,!1,function(){a._reactRootContainer=null;a[Ja]=null})}),!0):!1};Q.unstable_batchedUpdates=Tf;Q.unstable_renderSubtreeIntoContainer=function(a,b,c,d){if(!Vd(c))throw Error(m(200));if(null==a||void 0===a._reactInternals)throw Error(m(38));return Wd(a,b,c,!1,d)};Q.version="18.3.1-next-f1338f8080-20240426"});
 })();
 </script>
-</head>
-<body>
-<div id="root"></div>
 <script>
 const {
   useState,
@@ -2465,45 +2465,60 @@ function staticReading(cards, positions, question, sigId = 28) {
   };
   if (n === 36) return staticGrandTableau(cards, question, CORE_SHORT, sigId);
   if (n === 9) return staticSquareReading(cards, question, CORE_SHORT);
-  function buildOpener() {
-    if (n === 1) {
-      return (question ? `You ask: "${question}" — ` : "") + "A single card speaks for the whole.";
+
+  // ——— Narrative line reading: the line is one sentence; each card bends the next ———
+  const pairProse = (a, b) => {
+    let s = getCombo(a.id, b.id);
+    if (s) return s.replace(/^[^:]{0,40}:\s*/, "").replace(/\.\s*$/, "");
+    return `${NOUN[a.id]} — now ${MOD[b.id]}`;
+  };
+  const PLURAL = new Set([6, 12, 16, 23, 30, 34]); // Clouds, Birds, Stars, Mice, Lilies, Fish
+  const vb = (card, sing, plur) => PLURAL.has(card.id) ? plur : sing;
+  const qLead = question ? `"${question}" — ` : "";
+  function lineVerdict() {
+    const last = cards[n - 1];
+    let core;
+    if (netCharge >= Math.ceil(n / 2)) core = `${positiveCount} of ${n} cards run bright against ${shadowCount || "none"} in shadow — this line is favorable, said plainly.`;else if (netCharge > 0) core = `The balance leans bright — ${positiveCount} favorable against ${shadowCount} in shadow — though not without friction.`;else if (netCharge <= -Math.ceil(n / 2)) core = `${shadowCount} of ${n} cards run dark — this line is difficult, and it would be dishonest to soften that.`;else if (netCharge < 0) core = `The balance leans into shadow — the line carries more weight than lift.`;else core = `Light and shadow sit level in this line — the matter genuinely could go either way.`;
+    // The closing card colors the direction of travel, not the verdict itself
+    if (POSITIVE_S.has(last.id)) core += ` And the line exits through the ${last.name} — whatever the middle held, the direction of travel is upward.`;else if (SHADOW_S.has(last.id)) core += ` And the line exits through the ${last.name} — the direction of travel bends down at the end, whatever came before.`;else core += ` The line exits through the ${last.name} — ${NOUN[last.id]} is where this is headed.`;
+    if (isYesNo(question)) {
+      const v = netCharge > 1 ? "Yes." : netCharge < -1 ? "No." : netCharge === 1 ? "Qualified yes." : netCharge === -1 ? "Qualified no." : "Unclear — the cards split evenly.";
+      core = `${v} ${core}`;
     }
-    if (sigIdx !== -1) {
-      const prev = sigIdx > 0 ? cards[sigIdx - 1] : null;
-      const next = sigIdx < n - 1 ? cards[sigIdx + 1] : null;
-      if (prev && next) return `${question ? `"${question}" — ` : ""}The querent stands between ${prev.name} and ${next.name}.`;
-      if (prev) return `${question ? `"${question}" — ` : ""}The querent follows ${prev.name} — what has just occurred shapes where they stand.`;
-      if (next) return `${question ? `"${question}" — ` : ""}The querent leads into ${next.name} — their condition is what sets the following in motion.`;
-    }
-    const f = cards[0],
-      l = cards[n - 1];
-    return `${question ? `"${question}" — ` : ""}The spread opens on ${f.name} and closes on ${l.name}.`;
+    return core;
   }
-  const opening = buildOpener();
-  const cardParas = cards.map((card, i) => {
-    const pos = positions[i];
-    const prev = i > 0 ? cards[i - 1] : null;
-    const frame = pos ? `${pos}: ` : "";
-    let para = `${frame}${CORE_SHORT[card.id]}`;
-    if (prev) {
-      para += ` ${getPair(prev.id, card.id)}`;
-    }
-    if (SHADOW_S.has(card.id) && prev && POSITIVE_S.has(prev.id)) para += " The shadow follows something promising — do not let the previous card's warmth cancel this difficulty.";
-    if (POSITIVE_S.has(card.id) && prev && SHADOW_S.has(prev.id)) para += " After difficulty, this marks a genuine turn.";
-    return para;
-  });
-  let closing;
-  const last = cards[n - 1];
-  if (POSITIVE_S.has(last.id)) closing = netCharge >= 0 ? "The spread resolves on a positive card — the current runs in a constructive direction." : "The spread closes on a positive card despite carrying shadow through its middle.";else if (SHADOW_S.has(last.id)) closing = netCharge <= 0 ? "The spread closes in shadow and leans heavy throughout." : "The spread closes on difficulty despite some positive energy elsewhere.";else closing = "The spread closes without a strong verdict — the situation is still in motion.";
   function isYesNo(q) {
     return q && /^(will|is|are|does|do|can|should|would|has|have|was|were|shall|might|could|may|am|going to|is there|are there)\b/i.test(q.trim());
   }
-  if (n > 1 && isYesNo(question)) {
-    const verdict = netCharge > 1 ? "Yes." : netCharge < -1 ? "No." : netCharge === 1 ? "Qualified yes." : netCharge === -1 ? "Qualified no." : "Not yet clear.";
-    closing = `${verdict} ${closing}`;
+  if (n === 3) {
+    const [A, B, C] = cards;
+    const parts = [];
+    parts.push(`${qLead}Three cards, one line: ${A.name}, ${B.name}, ${C.name}. Lenormand reads this as a single sentence — each card bends the one that follows.`);
+    parts.push(`It opens with the ${A.name}. ${CORE_SHORT[A.id]} But the ${A.name} ${vb(A, "does", "do")} not stand alone — ${vb(A, "it flows", "they flow")} straight into the ${B.name}, and together they say: ${pairProse(A, B)}.`);
+    parts.push(`The ${B.name} ${vb(B, "carries", "carry")} the middle of the matter, and ${vb(B, "hands", "hand")} it on to the ${C.name}. ${CORE_SHORT[C.id]} Read as a pair: ${pairProse(B, C)}. That is how the situation resolves — not ${NOUN[C.id]} in the abstract, but ${NOUN[B.id]} becoming it.`);
+    parts.push(lineVerdict());
+    return parts.join("\n\n");
   }
-  return [opening, ...cardParas, closing].join("\n\n");
+  if (n === 5) {
+    const [A, B, C, D, E] = cards;
+    const parts = [];
+    parts.push(`${qLead}Five cards in a line: ${A.name}, ${B.name}, ${C.name}, ${D.name}, ${E.name}. The ${C.name} ${vb(C, "stands", "stand")} at the center — the heart of the matter. The first two cards walk toward it; the last two carry it out.`);
+    parts.push(`The approach: ${CORE_SHORT[A.id]} It moves through the ${B.name} — ${pairProse(A, B)} — and this is what arrives at the center's door.`);
+    parts.push(`At the heart sits the ${C.name}. ${CORE_SHORT[C.id]} What it receives from the ${B.name}: ${pairProse(B, C)}. What it sends onward into the ${D.name}: ${pairProse(C, D)}. Everything in this line passes through here — whatever the question, the ${C.name} ${vb(C, "is", "are")} what it is really about.`);
+    parts.push(`The outcome: from the ${D.name} the line runs to its end — ${pairProse(D, E)}. ${CORE_SHORT[E.id]} And end to end, the outer cards frame the whole: ${NOUN[A.id]}, finally ${MOD[E.id]}.`);
+    parts.push(lineVerdict());
+    return parts.join("\n\n");
+  }
+
+  // Fallback for any other length: simple chained narrative
+  const parts = [`${qLead}The spread opens on ${cards[0].name} and closes on ${cards[n - 1].name}.`];
+  for (let i = 0; i < n; i++) {
+    let para = CORE_SHORT[cards[i].id];
+    if (i > 0) para += ` With the ${cards[i - 1].name} before it: ${pairProse(cards[i - 1], cards[i])}.`;
+    parts.push(para);
+  }
+  parts.push(lineVerdict());
+  return parts.join("\n\n");
 }
 async function generateReading(cards, positions, spreadLabel, question, sigId = 28) {
   const is9 = cards.length === 9;
@@ -2589,11 +2604,24 @@ ${cardList}
 
 Begin directly with the most telling combination.`;
   try {
+    const apiKey = (() => {
+      try {
+        return localStorage.getItem("lenormand_api_key") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (apiKey) {
+      headers["x-api-key"] = apiKey;
+      headers["anthropic-version"] = "2023-06-01";
+      headers["anthropic-dangerous-direct-browser-access"] = "true";
+    }
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: isGT ? 3500 : 1500,
@@ -3015,6 +3043,15 @@ function LenormandOracle() {
   const [sig, setSig] = useState(28);
   const [journal, setJournal] = useState(loadJournal);
   const [openEntry, setOpenEntry] = useState(null);
+  const [source, setSource] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      return localStorage.getItem("lenormand_api_key") || "";
+    } catch {
+      return "";
+    }
+  });
   const spread = SPREADS[spreadKey];
   function looksLikeTypo(q) {
     if (!q || q.trim().length === 0) return false;
@@ -3050,6 +3087,7 @@ function LenormandOracle() {
     setReading("");
     const result = await generateReading(drawn, spread.positions, spread.label, question, sig);
     setReading(result.text);
+    setSource(result.source);
     const entry = {
       ts: Date.now(),
       spread: spreadKey,
@@ -3284,18 +3322,71 @@ function LenormandOracle() {
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn",
     onClick: drawCards
-  }, "✦ Draw Cards ✦")), journal.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "✦ Draw Cards ✦")), /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "center",
-      marginTop: "22px"
+      marginTop: "22px",
+      display: "flex",
+      gap: "10px",
+      justifyContent: "center",
+      flexWrap: "wrap"
     }
-  }, /*#__PURE__*/React.createElement("button", {
+  }, journal.length > 0 && /*#__PURE__*/React.createElement("button", {
     className: "tab",
     onClick: () => {
       setOpenEntry(null);
       setPhase("journal");
     }
-  }, "Journal · ", journal.length, " reading", journal.length === 1 ? "" : "s"))), (phase === "cards" || phase === "reading") && /*#__PURE__*/React.createElement("div", null, question && /*#__PURE__*/React.createElement("p", {
+  }, "Journal · ", journal.length, " reading", journal.length === 1 ? "" : "s"), /*#__PURE__*/React.createElement("button", {
+    className: "tab",
+    onClick: () => setShowSettings(s => !s)
+  }, apiKey ? "AI Engine · connected" : "AI Engine · set up")), showSettings && /*#__PURE__*/React.createElement("section", {
+    style: {
+      maxWidth: "460px",
+      margin: "24px auto 0",
+      animation: "fadeUp .35s ease-out",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: "13px",
+      lineHeight: 1.7,
+      color: "rgba(40,25,5,.65)",
+      fontStyle: "italic",
+      marginBottom: "14px"
+    }
+  }, "Paste an Anthropic API key to enable AI readings. The key is stored only in this browser, on this device — it is never uploaded anywhere except directly to Anthropic when a reading is drawn. Without a key, readings use the built-in traditional engine."), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: apiKey,
+    placeholder: "sk-ant-...",
+    autoComplete: "off",
+    onChange: e => {
+      const v = e.target.value.trim();
+      setApiKey(v);
+      try {
+        v ? localStorage.setItem("lenormand_api_key", v) : localStorage.removeItem("lenormand_api_key");
+      } catch {}
+    },
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "10px 14px",
+      fontSize: "13px",
+      fontFamily: "monospace",
+      background: "rgba(255,255,255,.5)",
+      border: "1px solid rgba(40,25,5,.25)",
+      borderRadius: "3px",
+      color: "#2a1f0e",
+      outline: "none"
+    }
+  }), apiKey && /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: "11px",
+      color: "rgba(40,25,5,.5)",
+      marginTop: "10px",
+      fontStyle: "italic"
+    }
+  }, "Key saved. Clear the field to remove it."))), (phase === "cards" || phase === "reading") && /*#__PURE__*/React.createElement("div", null, question && /*#__PURE__*/React.createElement("p", {
     style: {
       textAlign: "center",
       fontStyle: "italic",
@@ -3380,7 +3471,7 @@ function LenormandOracle() {
       color: "rgba(40,25,5,.42)",
       animation: "pulse 1.4s infinite"
     }
-  }, "READING THE CARDS · · ·") : /*#__PURE__*/React.createElement("p", {
+  }, "READING THE CARDS · · ·") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     className: "reading-body",
     style: {
       fontSize: "16px",
@@ -3388,7 +3479,17 @@ function LenormandOracle() {
       color: "#1a1008",
       whiteSpace: "pre-wrap"
     }
-  }, reading)), /*#__PURE__*/React.createElement("div", {
+  }, reading), source && /*#__PURE__*/React.createElement("p", {
+    style: {
+      textAlign: "right",
+      fontSize: "10px",
+      fontStyle: "italic",
+      color: "rgba(40,25,5,.4)",
+      marginTop: "10px",
+      fontFamily: "'Cinzel',serif",
+      letterSpacing: "2px"
+    }
+  }, source === "ai" ? "✦ AI READING" : "✦ TRADITIONAL ENGINE"))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: "14px",
