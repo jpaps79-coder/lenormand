@@ -2523,26 +2523,23 @@ function staticReading(cards, positions, question, sigId = 28) {
     const arcSign = netCharge > 0 ? 1 : netCharge < 0 ? -1 : 0;
     const tailSign = POSITIVE_S.has(last.id) ? 1 : SHADOW_S.has(last.id) ? -1 : 0;
     let arc;
-    if (netCharge >= Math.ceil(n / 2)) arc = `${positiveCount} of ${n} cards run bright against ${shadowCount || "none"} in shadow — this line is favorable, said plainly.`;else if (netCharge > 0) arc = `The balance leans bright — ${positiveCount} favorable against ${shadowCount} in shadow — though not without friction.`;else if (netCharge <= -Math.ceil(n / 2)) arc = `${shadowCount} of ${n} cards run dark — this line is difficult, and it would be dishonest to soften that.`;else if (netCharge < 0) arc = `The balance leans into shadow — the line carries more weight than lift.`;else arc = `Light and shadow sit even in this line — no single card carries enough weight to settle it alone.`;
+    if (netCharge >= Math.ceil(n / 2)) arc = `this line runs favorable on the whole, clearly enough that it's fair to say so plainly`;else if (netCharge > 0) arc = `the balance here leans toward the bright side, though not without some friction along the way`;else if (netCharge <= -Math.ceil(n / 2)) arc = `this line runs difficult on the whole, and it would be dishonest to dress that up as anything gentler`;else if (netCharge < 0) arc = `the balance leans into shadow, carrying more weight than lift`;else arc = `light and shadow sit close to even here, with no single card carrying enough weight to settle things on its own`;
 
     // The closing card is the last word, but it must qualify the balance, not contradict it.
     let tail;
     if (tailSign === 0) {
-      tail = `It closes on the ${last.name} — ${NOUN[last.id]} is where this settles.`;
+      tail = `and it closes on the ${last.name}, which is ultimately where things land`;
     } else if (arcSign === 0) {
-      // Balance was even — the closing card breaks the tie gently, doesn't override it.
-      tail = tailSign > 0 ? `Still, it closes on the ${last.name} — a small, real lift at the very end.` : `Still, it closes on the ${last.name} — a small, real drag at the very end.`;
+      tail = tailSign > 0 ? `still, it closes on the ${last.name}, giving the very end a small, real lift` : `still, it closes on the ${last.name}, giving the very end a small, real drag`;
     } else if (Math.sign(tailSign) === Math.sign(arcSign)) {
-      // Closing card agrees with the balance — reinforce, don't repeat.
-      tail = tailSign > 0 ? `And it closes on the ${last.name} — the line ends the way it leaned.` : `And it closes on the ${last.name} — the line ends the way it leaned.`;
+      tail = `and, true to that lean, it closes on the ${last.name} — the line ends the way it started`;
     } else {
-      // Closing card conflicts with the balance — name the tension honestly.
-      tail = tailSign > 0 ? `But it closes on the ${last.name} — whatever came before, the very end turns upward.` : `But it closes on the ${last.name} — whatever came before, the very end turns down.`;
+      tail = tailSign > 0 ? `but it closes on the ${last.name}, and whatever came before, the very end turns upward` : `but it closes on the ${last.name}, and whatever came before, the very end turns down`;
     }
-    let core = `${arc} ${tail}`;
+    let core = `${arc[0].toUpperCase()}${arc.slice(1)}, ${tail}.`;
     if (isYesNo(question)) {
-      const v = netCharge > 1 ? "Yes." : netCharge < -1 ? "No." : netCharge === 1 ? "Qualified yes." : netCharge === -1 ? "Qualified no." : "Unclear — the cards split evenly.";
-      core = `${v} ${core}`;
+      const v = netCharge > 1 ? "Yes" : netCharge < -1 ? "No" : netCharge === 1 ? "Qualified yes" : netCharge === -1 ? "Qualified no" : "Unclear, since the cards split evenly";
+      core = `${v} — ${arc}, ${tail}.`;
     }
     return core;
   }
