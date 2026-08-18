@@ -547,6 +547,14 @@ const POSITIVE_S = new Set([2, 9, 16, 17, 18, 24, 31, 32, 33, 34]);
 const LOVE_S = new Set([24, 25, 9, 30, 32]);
 const MONEY_S = new Set([15, 34, 35, 2]);
 const SIG_S = new Set([28, 29]);
+const PARTNER_SIGNAL_S = new Set([24, 25, 35]); // Heart, Ring, Anchor
+const RELATIONSHIP_RE = /\b(love|relationship|partner|dating|romance|romantic|marry|marriage|engage(?:d|ment)?|boyfriend|girlfriend|husband|wife|crush|soulmate|ex\b)\b/i;
+// Does the "other" court card read as the querent's partner here, or just as a significant figure?
+// True only if the question is relationship-shaped, or a Heart/Ring/Anchor sits among its neighbors.
+function isPartnerContext(question, neighborIds) {
+  if (question && RELATIONSHIP_RE.test(question)) return true;
+  return neighborIds.some(id => PARTNER_SIGNAL_S.has(id));
+}
 const CORE = {
   1: "The Rider brings a delivery — news, a message, or a visitor moving toward you. What arrives depends entirely on what surrounds this card.",
   2: "The Clover is luck and possibility — a small fortunate window, brief but real. Act on it rather than waiting.",
@@ -2252,7 +2260,7 @@ function CardArt({
     fill: "none"
   }));
 }
-function staticSquareReading(cards, question, CORE_SHORT) {
+function staticSquareReading(cards, question, CORE_SHORT, sigId = 28) {
   // grid: 0 1 2 / 3 4 5 / 6 7 8
   const w = id => POSITIVE_S.has(id) ? 1 : SHADOW_S.has(id) ? -1 : 0;
   const center = cards[4];
@@ -2296,12 +2304,32 @@ function staticSquareReading(cards, question, CORE_SHORT) {
   const colFrames = ["Receding", "Present", "Approaching"];
   parts.push(cols.map((c, i) => `${colFrames[i]}: ${c.map(x => x.name).join(" – ")}.`).join(" "));
 
-  // Significator
-  const sigIdx = cards.findIndex(c => SIG_S.has(c.id));
-  if (sigIdx !== -1) {
-    const row = Math.floor(sigIdx / 3),
-      col = sigIdx % 3;
-    parts.push(`The ${cards[sigIdx].name} stands in the ${["top", "middle", "bottom"][row]} row, ${["left", "center", "right"][col]} column — the querent is located in the ${rowFrames[row].toLowerCase()} along the ${colFrames[col].toLowerCase()} axis.`);
+  // Significator — the chosen card is the querent; the other court card's role depends on context
+  const sigCardIdx = cards.findIndex(c => c.id === sigId);
+  const otherCardId = sigId === 28 ? 29 : 28;
+  const otherCardIdx = cards.findIndex(c => c.id === otherCardId);
+  let otherRole9 = "a significant figure in the querent's life";
+  if (otherCardIdx !== -1) {
+    const or = Math.floor(otherCardIdx / 3),
+      oc = otherCardIdx % 3;
+    const gridNeighbors = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const r2 = or + dr,
+        c2 = oc + dc;
+      if (r2 >= 0 && r2 < 3 && c2 >= 0 && c2 < 3) gridNeighbors.push(cards[r2 * 3 + c2].id);
+    }
+    otherRole9 = isPartnerContext(question, gridNeighbors) ? "the querent's partner" : "a significant figure in the querent's life";
+  }
+  if (sigCardIdx !== -1) {
+    const row = Math.floor(sigCardIdx / 3),
+      col = sigCardIdx % 3;
+    parts.push(`The ${cards[sigCardIdx].name} stands in the ${["top", "middle", "bottom"][row]} row, ${["left", "center", "right"][col]} column — the querent is located in ${rowFrames[row].toLowerCase()}, along the ${colFrames[col].toLowerCase()} axis.`);
+  }
+  if (otherCardIdx !== -1) {
+    const row = Math.floor(otherCardIdx / 3),
+      col = otherCardIdx % 3;
+    parts.push(`The ${cards[otherCardIdx].name} — ${otherRole9}, here — falls in the ${["top", "middle", "bottom"][row]} row, ${["left", "center", "right"][col]} column.${sigCardIdx !== -1 ? ` That is ${Math.abs(row - Math.floor(sigCardIdx / 3)) + Math.abs(col - sigCardIdx % 3)} step${Math.abs(row - Math.floor(sigCardIdx / 3)) + Math.abs(col - sigCardIdx % 3) === 1 ? "" : "s"} from the querent's own position.` : ""}`);
   }
 
   // Verdict: center (x2) + corners + bottom row
@@ -2370,10 +2398,20 @@ function staticGrandTableau(cards, question, CORE_SHORT, sigId = 28) {
     parts.push(charge >= 2 ? `The immediate neighborhood is bright — of the ${touch.length} cards touching the significator, the balance runs clearly positive. The querent stands in good company.` : charge <= -2 ? `The immediate neighborhood is heavy — the cards touching the significator lean into shadow. Whatever the wider tableau holds, the querent's own ground is under pressure.` : `The cards touching the significator are mixed — no single tone owns the querent's immediate ground.`);
   }
 
-  // The other person card
+  // The other court card: partner if the question or its neighbors say so, otherwise a significant figure
   if (otherIdx >= 0 && sigIdx >= 0 && sigIdx < 32 && otherIdx < 32) {
     const dist = Math.max(Math.abs(Math.floor(otherIdx / 8) - Math.floor(sigIdx / 8)), Math.abs(otherIdx % 8 - sigIdx % 8));
-    parts.push(`The ${cards[otherIdx].name} stands ${dist <= 1 ? "directly beside the significator — this figure is fully inside the matter" : dist <= 3 ? `${dist} steps away — present in the situation, but not at its center` : `far across the tableau, ${dist} steps distant — this figure moves at the edge of the matter, or out of reach`}.`);
+    const oRow = Math.floor(otherIdx / 8),
+      oCol = otherIdx % 8;
+    const oNeighbors = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const r2 = oRow + dr,
+        c2 = oCol + dc;
+      if (r2 >= 0 && r2 < 4 && c2 >= 0 && c2 < 8) oNeighbors.push(cards[r2 * 8 + c2].id);
+    }
+    const otherRoleGT = isPartnerContext(question, oNeighbors) ? "the querent's partner" : "a significant figure in the querent's life";
+    parts.push(`The ${cards[otherIdx].name} — ${otherRoleGT}, here — stands ${dist <= 1 ? "directly beside the significator: fully inside the matter" : dist <= 3 ? `${dist} steps away: present in the situation, but not at its center` : `far across the tableau, ${dist} steps distant: at the edge of the matter, or out of reach`}.`);
   }
 
   // The four life domains: where each topic card fell, what house colors it,
@@ -2425,6 +2463,11 @@ function staticReading(cards, positions, question, sigId = 28) {
   const positiveCount = ids.filter(id => POSITIVE_S.has(id)).length;
   const sigIdx = ids.findIndex(id => SIG_S.has(id));
   const netCharge = positiveCount - shadowCount;
+  const otherCourtId = sigId === 28 ? 29 : 28;
+  const otherLineIdx = ids.indexOf(otherCourtId);
+  const otherLineNeighbors = otherLineIdx === -1 ? [] : [ids[otherLineIdx - 1], ids[otherLineIdx + 1]].filter(id => id !== undefined);
+  const otherIsPartner = isPartnerContext(question, otherLineNeighbors);
+  const otherRole = otherIsPartner ? "the querent's partner" : "a significant figure in the querent's life";
   const CORE_SHORT = {
     1: "The Rider brings a delivery — news or a visitor arriving.",
     2: "The Clover offers luck — a brief possibility.",
@@ -2432,7 +2475,7 @@ function staticReading(cards, positions, question, sigId = 28) {
     4: "The House brings the matter home — family, the private sphere.",
     5: "The Tree grounds this in health and slow growing.",
     6: "The Clouds introduce doubt and confusion.",
-    7: "The Snake names betrayal — lies, or a problem in the matter.",
+    7: "The Snake complicates — a deception, a tangled problem, or an indirect path.",
     8: "The Coffin marks an ending and a rest.",
     9: "The Bouquet brings a small gift — beauty, happiness.",
     10: "The Scythe breaks suddenly — a divisive cut.",
@@ -2441,7 +2484,7 @@ function staticReading(cards, positions, question, sigId = 28) {
     13: "The Child marks a beginning, still small.",
     14: "The Fox names employment, or cunning at work.",
     15: "The Bear brings power — strength, finance, food.",
-    16: "The Stars hold destiny — the future, and hope.",
+    16: "The Stars point toward hope and direction — guidance worth following.",
     17: "The Stork announces improvement — a positive change.",
     18: "The Dog names a friend — loyalty and trust.",
     19: "The Tower stands for bureaucracy and large institutions — or standing alone.",
@@ -2453,18 +2496,18 @@ function staticReading(cards, positions, question, sigId = 28) {
     25: "The Ring seals commitment — a relationship or contract.",
     26: "The Book holds secrets, the unknown — or learning.",
     27: "The Letter delivers news — an invitation, results, documents.",
-    28: "The Man is the querent himself, or a key male figure.",
-    29: "The Woman is a key female figure.",
-    30: "The Lilies bring wisdom — aging and maturity.",
+    28: sigId === 28 ? "The Man is the querent." : `The Man appears here as ${otherRole}.`,
+    29: sigId === 29 ? "The Woman is the querent." : `The Woman appears here as ${otherRole}.`,
+    30: "The Lilies bring maturity and peace — long-standing, and calm.",
     31: "The Sun radiates happiness — bringing things to light.",
     32: "The Moon carries recognition and romance — emotions, dreams.",
     33: "The Key opens — success, access, solutions.",
     34: "The Fish flow with money and abundance.",
     35: "The Anchor holds security — stability, depth.",
-    36: "The Cross is fate — burden, pain, and faith."
+    36: "The Cross names fate — a burden carried, met with faith."
   };
   if (n === 36) return staticGrandTableau(cards, question, CORE_SHORT, sigId);
-  if (n === 9) return staticSquareReading(cards, question, CORE_SHORT);
+  if (n === 9) return staticSquareReading(cards, question, CORE_SHORT, sigId);
 
   // ——— Narrative line reading: the line is one sentence; each card bends the next ———
   const pairProse = (a, b) => {
@@ -2477,10 +2520,26 @@ function staticReading(cards, positions, question, sigId = 28) {
   const qLead = question ? `"${question}" — ` : "";
   function lineVerdict() {
     const last = cards[n - 1];
-    let core;
-    if (netCharge >= Math.ceil(n / 2)) core = `${positiveCount} of ${n} cards run bright against ${shadowCount || "none"} in shadow — this line is favorable, said plainly.`;else if (netCharge > 0) core = `The balance leans bright — ${positiveCount} favorable against ${shadowCount} in shadow — though not without friction.`;else if (netCharge <= -Math.ceil(n / 2)) core = `${shadowCount} of ${n} cards run dark — this line is difficult, and it would be dishonest to soften that.`;else if (netCharge < 0) core = `The balance leans into shadow — the line carries more weight than lift.`;else core = `Light and shadow sit level in this line — the matter genuinely could go either way.`;
-    // The closing card colors the direction of travel, not the verdict itself
-    if (POSITIVE_S.has(last.id)) core += ` And the line exits through the ${last.name} — whatever the middle held, the direction of travel is upward.`;else if (SHADOW_S.has(last.id)) core += ` And the line exits through the ${last.name} — the direction of travel bends down at the end, whatever came before.`;else core += ` The line exits through the ${last.name} — ${NOUN[last.id]} is where this is headed.`;
+    const arcSign = netCharge > 0 ? 1 : netCharge < 0 ? -1 : 0;
+    const tailSign = POSITIVE_S.has(last.id) ? 1 : SHADOW_S.has(last.id) ? -1 : 0;
+    let arc;
+    if (netCharge >= Math.ceil(n / 2)) arc = `${positiveCount} of ${n} cards run bright against ${shadowCount || "none"} in shadow — this line is favorable, said plainly.`;else if (netCharge > 0) arc = `The balance leans bright — ${positiveCount} favorable against ${shadowCount} in shadow — though not without friction.`;else if (netCharge <= -Math.ceil(n / 2)) arc = `${shadowCount} of ${n} cards run dark — this line is difficult, and it would be dishonest to soften that.`;else if (netCharge < 0) arc = `The balance leans into shadow — the line carries more weight than lift.`;else arc = `Light and shadow sit even in this line — no single card carries enough weight to settle it alone.`;
+
+    // The closing card is the last word, but it must qualify the balance, not contradict it.
+    let tail;
+    if (tailSign === 0) {
+      tail = `It closes on the ${last.name} — ${NOUN[last.id]} is where this settles.`;
+    } else if (arcSign === 0) {
+      // Balance was even — the closing card breaks the tie gently, doesn't override it.
+      tail = tailSign > 0 ? `Still, it closes on the ${last.name} — a small, real lift at the very end.` : `Still, it closes on the ${last.name} — a small, real drag at the very end.`;
+    } else if (Math.sign(tailSign) === Math.sign(arcSign)) {
+      // Closing card agrees with the balance — reinforce, don't repeat.
+      tail = tailSign > 0 ? `And it closes on the ${last.name} — the line ends the way it leaned.` : `And it closes on the ${last.name} — the line ends the way it leaned.`;
+    } else {
+      // Closing card conflicts with the balance — name the tension honestly.
+      tail = tailSign > 0 ? `But it closes on the ${last.name} — whatever came before, the very end turns upward.` : `But it closes on the ${last.name} — whatever came before, the very end turns down.`;
+    }
+    let core = `${arc} ${tail}`;
     if (isYesNo(question)) {
       const v = netCharge > 1 ? "Yes." : netCharge < -1 ? "No." : netCharge === 1 ? "Qualified yes." : netCharge === -1 ? "Qualified no." : "Unclear — the cards split evenly.";
       core = `${v} ${core}`;
@@ -2551,6 +2610,8 @@ ${cardList}
 Begin with the significator's position.`;
   const prompt = isGT ? gtPrompt : is9 ? `You are an expert Lenormand reader. You are reading a 9-card square (petit tableau).
 
+The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is relationship-oriented, or if Heart, Ring, or Anchor sits near it in the grid.
+
 Grid layout (positions 1–9, left to right, top to bottom):
 1 | 2 | 3
 4 | 5 | 6
@@ -2570,7 +2631,7 @@ Geometric structure:
 
 Lenormand reading rules:
 1. Cards do not have independent meanings — they derive meaning through combination with neighbors. Read pairs and triplets, not individual cards.
-2. If Man (28) or Woman (29) appears, identify its row and column and what that placement says about where the querent stands in the geometry.
+2. Man (28) is the querent if he is the chosen significator, otherwise (when Woman is significator) he is the querent's partner if present. Woman (29) works the same way in reverse. Identify whichever appears by its row and column and what that placement says.
 3. Begin with the center card — it is the fulcrum. Then the frame, then mirrors, then the rows and columns that matter most. Do not walk the cards in numerical order.
 4. Do not invent named positions. Do not label cards as "hidden" or "outcome." Use only geometric language.
 5. State each combination's meaning once — never repeat a pair's interpretation.
@@ -2586,11 +2647,13 @@ ${cardList}
 
 Begin with the center card.` : `You are an expert Lenormand reader in the traditional Germanic cartomancy method.
 
+The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in this line, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is relationship-oriented, or if Heart, Ring, or Anchor sits adjacent to it in the line.
+
 Lenormand reading rules (follow strictly):
 1. Lenormand cards derive their meaning through combination with their neighbors. Never read a card in isolation — always state what the card means in context of what flanks it.
 2. For a 3-card line: read as a noun+verb+noun or subject+condition+outcome combination. The center card is modified by both flanking cards.
 3. For a 5-card line: read adjacent pairs (I+II, II+III, III+IV, IV+V), then the skip-pairs (I+III, III+V), then the full arc I to V. The center card is the subject everything orbits.
-4. If Man (28) or Woman (29) appears, it is the significator. Name explicitly what is pressing in on them from each side and what that means for the querent's situation.
+4. If the significator appears, name explicitly what is pressing in on the querent from each side. If the partner card also appears, name its position relative to the significator and what that says about the partner's role in this matter.
 5. Lead with the combination or pairing that names the situation most precisely — not the first card in sequence.
 6. Write in flowing prose, 3–4 paragraphs. No bullets, no headers.
 7. If yes/no: final paragraph opens with Yes, Qualified Yes, Not Yet, or No — then qualifying observations.
@@ -3239,7 +3302,7 @@ function LenormandOracle() {
     onClick: () => setSpreadKey(k)
   }, s.label), /*#__PURE__*/React.createElement(InfoButton, {
     text: s.info
-  }))))), spreadKey === "36" && /*#__PURE__*/React.createElement("section", {
+  }))))), /*#__PURE__*/React.createElement("section", {
     style: {
       marginBottom: "44px",
       animation: "fadeUp .35s ease-out"
@@ -3266,7 +3329,15 @@ function LenormandOracle() {
   }, "The Man"), /*#__PURE__*/React.createElement("button", {
     className: `tab${sig === 29 ? " on" : ""}`,
     onClick: () => setSig(29)
-  }, "The Woman"))), /*#__PURE__*/React.createElement("section", {
+  }, "The Woman")), /*#__PURE__*/React.createElement("p", {
+    style: {
+      textAlign: "center",
+      fontSize: "11px",
+      fontStyle: "italic",
+      color: "rgba(40,25,5,.5)",
+      marginTop: "10px"
+    }
+  }, "The other court card, when it appears, reads as a significant figure — a partner only if the question or nearby cards say so.")), /*#__PURE__*/React.createElement("section", {
     style: {
       marginBottom: "44px"
     }
