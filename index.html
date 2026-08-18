@@ -2546,22 +2546,23 @@ function staticReading(cards, positions, question, sigId = 28) {
   function isYesNo(q) {
     return q && /^(will|is|are|does|do|can|should|would|has|have|was|were|shall|might|could|may|am|going to|is there|are there)\b/i.test(q.trim());
   }
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   if (n === 3) {
     const [A, B, C] = cards;
     const parts = [];
-    parts.push(`${qLead}Three cards, one line: ${A.name}, ${B.name}, ${C.name}. Lenormand reads this as a single sentence — each card bends the one that follows.`);
-    parts.push(`It opens with the ${A.name}. ${CORE_SHORT[A.id]} But the ${A.name} ${vb(A, "does", "do")} not stand alone — ${vb(A, "it flows", "they flow")} straight into the ${B.name}, and together they say: ${pairProse(A, B)}.`);
-    parts.push(`The ${B.name} ${vb(B, "carries", "carry")} the middle of the matter, and ${vb(B, "hands", "hand")} it on to the ${C.name}. ${CORE_SHORT[C.id]} Read as a pair: ${pairProse(B, C)}. That is how the situation resolves — not ${NOUN[C.id]} in the abstract, but ${NOUN[B.id]} becoming it.`);
+    parts.push(pick([`${qLead}Three cards, one line: ${A.name}, ${B.name}, ${C.name} — each one bending into the next.`, `${qLead}${A.name}, ${B.name}, ${C.name}: read as a single unfolding thought, not three separate cards.`, `${qLead}The line runs ${A.name} into ${B.name} into ${C.name} — one sentence, not three.`]));
+    parts.push(pick([`${CORE_SHORT[A.id]} Moving into the ${B.name}, that becomes ${pairProse(A, B)}.`, `${CORE_SHORT[A.id]} That carries straight into the ${B.name}: ${pairProse(A, B)}.`, `${CORE_SHORT[A.id]} The ${B.name} ${vb(B, "takes", "take")} it from there — ${pairProse(A, B)}.`]));
+    parts.push(pick([`From there, the ${C.name} ${vb(C, "carries", "carry")} it out — ${pairProse(B, C)}. ${CORE_SHORT[C.id]}`, `That lands in the ${C.name}: ${pairProse(B, C)}. ${CORE_SHORT[C.id]}`, `${CORE_SHORT[C.id]} And so it settles there — ${pairProse(B, C)}.`]));
     parts.push(lineVerdict());
     return parts.join("\n\n");
   }
   if (n === 5) {
     const [A, B, C, D, E] = cards;
     const parts = [];
-    parts.push(`${qLead}Five cards in a line: ${A.name}, ${B.name}, ${C.name}, ${D.name}, ${E.name}. The ${C.name} ${vb(C, "stands", "stand")} at the center — the heart of the matter. The first two cards walk toward it; the last two carry it out.`);
-    parts.push(`The approach: ${CORE_SHORT[A.id]} It moves through the ${B.name} — ${pairProse(A, B)} — and this is what arrives at the center's door.`);
+    parts.push(pick([`${qLead}Five cards in a line: ${A.name}, ${B.name}, ${C.name}, ${D.name}, ${E.name}. The ${C.name} ${vb(C, "stands", "stand")} at the center — the heart of the matter. The first two cards walk toward it; the last two carry it out.`, `${qLead}${A.name}, ${B.name}, ${C.name}, ${D.name}, ${E.name} — five cards building toward the ${C.name} at the center, then unwinding into the ${E.name}.`]));
+    parts.push(pick([`The approach: ${CORE_SHORT[A.id]} It moves through the ${B.name} — ${pairProse(A, B)} — and this is what arrives at the center's door.`, `Coming in: ${CORE_SHORT[A.id]} By the time it passes through the ${B.name}, that's shifted to ${pairProse(A, B)}.`]));
     parts.push(`At the heart sits the ${C.name}. ${CORE_SHORT[C.id]} What it receives from the ${B.name}: ${pairProse(B, C)}. What it sends onward into the ${D.name}: ${pairProse(C, D)}. Everything in this line passes through here — whatever the question, the ${C.name} ${vb(C, "is", "are")} what it is really about.`);
-    parts.push(`The outcome: from the ${D.name} the line runs to its end — ${pairProse(D, E)}. ${CORE_SHORT[E.id]} And end to end, the outer cards frame the whole: ${NOUN[A.id]}, finally ${MOD[E.id]}.`);
+    parts.push(pick([`The outcome: from the ${D.name} the line runs to its end — ${pairProse(D, E)}. ${CORE_SHORT[E.id]}`, `Carrying out: the ${D.name} hands off to the ${E.name} — ${pairProse(D, E)}. ${CORE_SHORT[E.id]}`]));
     parts.push(lineVerdict());
     return parts.join("\n\n");
   }
