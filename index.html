@@ -2687,30 +2687,39 @@ Begin directly with the most telling combination.`;
       headers["anthropic-version"] = "2023-06-01";
       headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: isGT ? 3500 : 1500,
-        messages: [{
-          role: "user",
-          content: prompt
-        }]
-      })
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    let response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: "claude-sonnet-5",
+          max_tokens: isGT ? 3500 : 1500,
+          messages: [{
+            role: "user",
+            content: prompt
+          }]
+        })
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     const data = await response.json();
-    if (!response.ok) throw new Error("api_error");
+    if (!response.ok) throw new Error(`api_error_${response.status}: ${data?.error?.message || "unknown"}`);
     const text = data?.content?.find?.(b => b.type === "text")?.text;
     if (!text) throw new Error("no_text");
     return {
       text,
       source: "ai"
     };
-  } catch {
+  } catch (err) {
     return {
       text: staticReading(cards, positions, question, sigId),
-      source: "static"
+      source: "static",
+      error: err?.name === "AbortError" ? "timeout" : err?.message || String(err)
     };
   }
 }
@@ -3112,6 +3121,7 @@ function LenormandOracle() {
   const [journal, setJournal] = useState(loadJournal);
   const [openEntry, setOpenEntry] = useState(null);
   const [source, setSource] = useState("");
+  const [engineError, setEngineError] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState(() => {
     try {
@@ -3156,6 +3166,7 @@ function LenormandOracle() {
     const result = await generateReading(drawn, spread.positions, spread.label, question, sig);
     setReading(result.text);
     setSource(result.source);
+    setEngineError(result.error || "");
     const entry = {
       ts: Date.now(),
       spread: spreadKey,
@@ -3565,7 +3576,14 @@ function LenormandOracle() {
       fontFamily: "'Cinzel',serif",
       letterSpacing: "2px"
     }
-  }, source === "ai" ? "✦ AI READING" : "✦ TRADITIONAL ENGINE"))), /*#__PURE__*/React.createElement("div", {
+  }, source === "ai" ? "✦ AI READING" : "✦ TRADITIONAL ENGINE"), source === "static" && engineError && /*#__PURE__*/React.createElement("p", {
+    style: {
+      textAlign: "right",
+      fontSize: "10px",
+      color: "rgba(160,60,40,.7)",
+      marginTop: "4px"
+    }
+  }, "AI engine fell back: ", engineError))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: "14px",
