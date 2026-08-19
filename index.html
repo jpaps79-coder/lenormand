@@ -2696,7 +2696,7 @@ Begin directly with the most telling combination.`;
       headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
     const controller = new AbortController();
-    const timeoutMs = isGT ? 60000 : is9 ? 50000 : 30000;
+    const timeoutMs = isGT ? 90000 : is9 ? 50000 : 30000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
