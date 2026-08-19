@@ -2697,7 +2697,7 @@ Begin directly with the most telling combination.`;
         signal: controller.signal,
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: isGT ? 3500 : 1500,
+          max_tokens: isGT ? 3500 : is9 ? 2200 : 1500,
           messages: [{
             role: "user",
             content: prompt
@@ -2711,9 +2711,11 @@ Begin directly with the most telling combination.`;
     if (!response.ok) throw new Error(`api_error_${response.status}: ${data?.error?.message || "unknown"}`);
     const text = data?.content?.find?.(b => b.type === "text")?.text;
     if (!text) throw new Error("no_text");
+    const truncated = data?.stop_reason === "max_tokens";
     return {
-      text,
-      source: "ai"
+      text: truncated ? `${text}\n\n[This reading was cut off before finishing — please try again.]` : text,
+      source: "ai",
+      truncated
     };
   } catch (err) {
     return {
