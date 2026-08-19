@@ -555,6 +555,11 @@ function isPartnerContext(question, neighborIds) {
   if (question && RELATIONSHIP_RE.test(question)) return true;
   return neighborIds.some(id => PARTNER_SIGNAL_S.has(id));
 }
+// Shared yes/no gate: only questions phrased as a direct yes/no ask get a verdict word.
+// Open questions ("what does X look like", "how is Y going") get a descriptive close instead.
+function isYesNo(q) {
+  return q && /^(will|is|are|does|do|can|should|would|has|have|was|were|shall|might|could|may|am|going to|is there|are there)\b/i.test(q.trim());
+}
 const CORE = {
   1: "The Rider brings a delivery — news, a message, or a visitor moving toward you. What arrives depends entirely on what surrounds this card.",
   2: "The Clover is luck and possibility — a small fortunate window, brief but real. Act on it rather than waiting.",
@@ -2543,15 +2548,11 @@ function staticReading(cards, positions, question, sigId = 28) {
     }
     return core;
   }
-  function isYesNo(q) {
-    return q && /^(will|is|are|does|do|can|should|would|has|have|was|were|shall|might|could|may|am|going to|is there|are there)\b/i.test(q.trim());
-  }
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   if (n === 3) {
     const [A, B, C] = cards;
     const parts = [];
-    parts.push(pick([`${qLead}Three cards, one line: ${A.name}, ${B.name}, ${C.name} — each one bending into the next.`, `${qLead}${A.name}, ${B.name}, ${C.name}: read as a single unfolding thought, not three separate cards.`, `${qLead}The line runs ${A.name} into ${B.name} into ${C.name} — one sentence, not three.`]));
-    parts.push(pick([`${CORE_SHORT[A.id]} Moving into the ${B.name}, that becomes ${pairProse(A, B)}.`, `${CORE_SHORT[A.id]} That carries straight into the ${B.name}: ${pairProse(A, B)}.`, `${CORE_SHORT[A.id]} The ${B.name} ${vb(B, "takes", "take")} it from there — ${pairProse(A, B)}.`]));
+    parts.push(pick([`${qLead}${CORE_SHORT[A.id]} Moving into the ${B.name}, that becomes ${pairProse(A, B)}.`, `${qLead}${CORE_SHORT[A.id]} That carries straight into the ${B.name}: ${pairProse(A, B)}.`, `${qLead}${CORE_SHORT[A.id]} The ${B.name} ${vb(B, "takes", "take")} it from there — ${pairProse(A, B)}.`]));
     parts.push(pick([`From there, the ${C.name} ${vb(C, "carries", "carry")} it out — ${pairProse(B, C)}. ${CORE_SHORT[C.id]}`, `That lands in the ${C.name}: ${pairProse(B, C)}. ${CORE_SHORT[C.id]}`, `${CORE_SHORT[C.id]} And so it settles there — ${pairProse(B, C)}.`]));
     parts.push(lineVerdict());
     return parts.join("\n\n");
@@ -2559,7 +2560,7 @@ function staticReading(cards, positions, question, sigId = 28) {
   if (n === 5) {
     const [A, B, C, D, E] = cards;
     const parts = [];
-    parts.push(pick([`${qLead}Five cards in a line: ${A.name}, ${B.name}, ${C.name}, ${D.name}, ${E.name}. The ${C.name} ${vb(C, "stands", "stand")} at the center — the heart of the matter. The first two cards walk toward it; the last two carry it out.`, `${qLead}${A.name}, ${B.name}, ${C.name}, ${D.name}, ${E.name} — five cards building toward the ${C.name} at the center, then unwinding into the ${E.name}.`]));
+    parts.push(`${qLead}The ${C.name} ${vb(C, "stands", "stand")} at the center of this line — the heart of the matter, with two cards approaching and two carrying it out.`);
     parts.push(pick([`The approach: ${CORE_SHORT[A.id]} It moves through the ${B.name} — ${pairProse(A, B)} — and this is what arrives at the center's door.`, `Coming in: ${CORE_SHORT[A.id]} By the time it passes through the ${B.name}, that's shifted to ${pairProse(A, B)}.`]));
     parts.push(`At the heart sits the ${C.name}. ${CORE_SHORT[C.id]} What it receives from the ${B.name}: ${pairProse(B, C)}. What it sends onward into the ${D.name}: ${pairProse(C, D)}. Everything in this line passes through here — whatever the question, the ${C.name} ${vb(C, "is", "are")} what it is really about.`);
     parts.push(pick([`The outcome: from the ${D.name} the line runs to its end — ${pairProse(D, E)}. ${CORE_SHORT[E.id]}`, `Carrying out: the ${D.name} hands off to the ${E.name} — ${pairProse(D, E)}. ${CORE_SHORT[E.id]}`]));
@@ -2580,6 +2581,8 @@ function staticReading(cards, positions, question, sigId = 28) {
 async function generateReading(cards, positions, spreadLabel, question, sigId = 28) {
   const is9 = cards.length === 9;
   const isGT = cards.length === 36;
+  const questionIsYesNo = isYesNo(question);
+  const verdictInstruction = question ? questionIsYesNo ? `The question is phrased as a direct yes/no ask. Your final paragraph MUST open with one word: Yes, Qualified yes, Qualified no, No, or Unclear — then the reasoning.` : `The question is open-ended, not yes/no (it asks what/how/describe, not will/is/does). Do NOT open the final paragraph with Yes, No, or Qualified — that would misrepresent an open question as a verdict. Instead, close with a direct descriptive statement of what the cards show.` : `No question was asked. Close with a direct descriptive statement of what the cards show — no Yes/No verdict language.`;
   const cardList = isGT ? cards.map((c, i) => `Position ${i + 1}${i < 32 ? ` (House of the ${NAME_BY_ID[i + 1]})` : ` (Fate card ${i - 31}, House of the ${NAME_BY_ID[i + 1]})`}: ${c.name} — ${c.key}`).join("\n") : is9 ? cards.map((c, i) => `Position ${i + 1}: ${c.name} — ${c.key}`).join("\n") : cards.map((c, i) => `${positions[i]}: ${c.name} — ${c.key}`).join("\n");
   const gtPrompt = `You are an expert Lenormand reader. You are reading a Grand Tableau — all 36 cards.
 
@@ -2597,7 +2600,7 @@ Grand Tableau method (follow strictly):
 7. The four fate cards (positions 33–36) are what is not negotiable. Read them as two pairs and give them the final word before your verdict.
 8. Corners of the 8×4 grid frame the whole.
 9. Write in flowing prose, 7–9 paragraphs. No bullets, no headers, no position-by-position walkthrough.
-10. If a question is asked, give its topic cards the most weight. If yes/no: final paragraph opens with Yes, Qualified Yes, Not Yet, or No.
+10. If a question is asked, give its topic cards the most weight. ${verdictInstruction}
 11. End with a single directional statement drawn from the whole geometry.
 
 ${question ? `Question: "${question}"` : "No specific question — read this as a portrait of the querent's life at this moment."}
@@ -2608,7 +2611,7 @@ ${cardList}
 Begin with the significator's position.`;
   const prompt = isGT ? gtPrompt : is9 ? `You are an expert Lenormand reader. You are reading a 9-card square (petit tableau).
 
-The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is relationship-oriented, or if Heart, Ring, or Anchor sits near it in the grid.
+The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is relationship-oriented, or if Heart, Ring, or Anchor sits near it in the grid. Do not assert more significance for this card than the geometry and the question actually support.
 
 Grid layout (positions 1–9, left to right, top to bottom):
 1 | 2 | 3
@@ -2626,17 +2629,21 @@ Geometric structure:
 - Column 2 (2–5–8): what is present and in motion.
 - Column 3 (3–6–9): what is approaching or incoming.
 - Diagonals (1–5–9 and 3–5–7) are cross-influences passing through the center.
+These position names (frame, mirror, receding column, etc.) are for your own analysis. Never use this jargon in the reading itself — translate it into plain description of what is happening, not which structural slot it occupies.
 
 Lenormand reading rules:
 1. Cards do not have independent meanings — they derive meaning through combination with neighbors. Read pairs and triplets, not individual cards.
-2. Man (28) is the querent if he is the chosen significator, otherwise (when Woman is significator) he is the querent's partner if present. Woman (29) works the same way in reverse. Identify whichever appears by its row and column and what that placement says.
+2. If the significator's court-card counterpart appears, identify its row and column and read it per the partner-context rule above — do not default to calling it a partner or otherwise inflating its importance beyond what the position and question support.
 3. Begin with the center card — it is the fulcrum. Then the frame, then mirrors, then the rows and columns that matter most. Do not walk the cards in numerical order.
-4. Do not invent named positions. Do not label cards as "hidden" or "outcome." Use only geometric language.
-5. State each combination's meaning once — never repeat a pair's interpretation.
-6. The outcome is NEVER simply the last card. Synthesize the verdict from the bottom row, the corners, and the center together.
-7. Write in flowing prose, 4–6 paragraphs. No bullets, no position headers.
-8. If yes/no: final paragraph opens with Yes, Qualified Yes, Not Yet, or No.
-9. End with a single directional statement that follows from the geometry, not from card 9 alone.
+4. Read the top row, middle row, and bottom row each as their own fused horizontal sequence, not just as isolated corner/frame cards or a single bottom-row summary — a fast, self-resolving pattern in the top row (e.g. something new closing quickly) is just as real a signal as anything in the bottom row.
+5. Do not invent named positions. Do not label cards as "hidden" or "outcome." Use only geometric language, translated into plain description per the rule above.
+6. State each combination's meaning once. If the same theme (e.g. communication, money, conflict) shows up in more than one part of the grid, name it once with full weight and simply note where else it recurs — do not re-explain it from scratch each time.
+7. The outcome is NEVER simply the last card. Synthesize the verdict from ALL THREE rows, the corners, and the center together — not the bottom row alone.
+8. If Crossroads (22) appears, do not resolve it into a single decisive outcome. Its meaning is that the matter stays genuinely divided, open, or multi-branched — say so plainly rather than implying a choice will settle it.
+9. Read the cards. Do not coach the querent on what they should do, and do not frame the outcome as contingent on the querent's choices or effort ("it depends on whether you..."). State what the cards show, not advice for acting on it.
+10. Write in flowing prose, 4–5 tight paragraphs — no paragraph should restate a theme already covered in an earlier one.
+11. ${verdictInstruction}
+12. End with a single direct, plainly-worded statement that follows from the geometry, not from card 9 alone.
 
 ${question ? `Question: "${question}"` : "No specific question."}
 
@@ -2654,7 +2661,7 @@ Lenormand reading rules (follow strictly):
 4. If the significator appears, name explicitly what is pressing in on the querent from each side. If the partner card also appears, name its position relative to the significator and what that says about the partner's role in this matter.
 5. Lead with the combination or pairing that names the situation most precisely — not the first card in sequence.
 6. Write in flowing prose, 3–4 paragraphs. No bullets, no headers.
-7. If yes/no: final paragraph opens with Yes, Qualified Yes, Not Yet, or No — then qualifying observations.
+7. ${verdictInstruction}
 8. End with a single directional statement.
 
 Spread: ${spreadLabel}
@@ -3636,7 +3643,25 @@ ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      reg.update();
+      if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      reg.addEventListener("updatefound", () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener("statechange", () => {
+          if (nw.state === "installed" && navigator.serviceWorker.controller) {
+            nw.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      });
+    }).catch(() => {});
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshed) return;
+      refreshed = true;
+      window.location.reload();
+    });
   });
 }
 </script>
