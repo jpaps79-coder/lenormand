@@ -2325,7 +2325,10 @@ function staticSquareReading(cards, question, CORE_SHORT, sigId = 28) {
       if (!dr && !dc) continue;
       const r2 = or + dr,
         c2 = oc + dc;
-      if (r2 >= 0 && r2 < 3 && c2 >= 0 && c2 < 3) gridNeighbors.push(cards[r2 * 3 + c2].id);
+      // Exclude the center cell from this check — it structurally touches every other cell in a 3×3
+      // grid, so a Heart/Ring/Anchor sitting at the center would trivially "neighbor" everything,
+      // which isn't a genuine proximity signal. Only real, off-center adjacency counts.
+      if (r2 >= 0 && r2 < 3 && c2 >= 0 && c2 < 3 && !(r2 === 1 && c2 === 1)) gridNeighbors.push(cards[r2 * 3 + c2].id);
     }
     otherRole9 = isPartnerContext(question, gridNeighbors) ? "the querent's partner" : "a significant figure in the querent's life";
   }
@@ -2616,7 +2619,7 @@ ${cardList}
 Begin with the significator's position.`;
   const prompt = isGT ? gtPrompt : is9 ? `You are an expert Lenormand reader. You are reading a 9-card square (petit tableau).
 
-The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is about the querent's OWN relationship (phrased with "my", "our", "we", "us"), or if Heart, Ring, or Anchor sits near it in the grid. A question about someone else's relationship (e.g. "how is X and Y's relationship") is NOT about the querent's partner — do not apply partner framing to third-party questions. Do not assert more significance for this card than the geometry and the question actually support.
+The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is about the querent's OWN relationship (phrased with "my", "our", "we", "us"), or if Heart, Ring, or Anchor is genuinely adjacent to it off-center. A question about someone else's relationship (e.g. "how is X and Y's relationship") is NOT about the querent's partner — do not apply partner framing to third-party questions. Note: the center cell touches all eight other cells in this grid — if Heart, Ring, or Anchor happens to occupy the center, that alone does NOT count as "near" for this purpose, since it would trivially apply to every card on the board. Do not assert more significance for this card than the geometry and the question actually support.
 
 Grid layout (positions 1–9, left to right, top to bottom):
 1 | 2 | 3
