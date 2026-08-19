@@ -2696,7 +2696,7 @@ Begin directly with the most telling combination.`;
       headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
     const controller = new AbortController();
-    const timeoutMs = isGT ? 60000 : is9 ? 45000 : 30000;
+    const timeoutMs = isGT ? 60000 : is9 ? 50000 : 30000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
@@ -2706,7 +2706,7 @@ Begin directly with the most telling combination.`;
         signal: controller.signal,
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: isGT ? 3500 : is9 ? 2200 : 1500,
+          max_tokens: isGT ? 3500 : is9 ? 3000 : 1500,
           messages: [{
             role: "user",
             content: prompt
