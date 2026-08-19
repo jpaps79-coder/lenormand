@@ -549,10 +549,13 @@ const MONEY_S = new Set([15, 34, 35, 2]);
 const SIG_S = new Set([28, 29]);
 const PARTNER_SIGNAL_S = new Set([24, 25, 35]); // Heart, Ring, Anchor
 const RELATIONSHIP_RE = /\b(love|relationship|partner|dating|romance|romantic|marry|marriage|engage(?:d|ment)?|boyfriend|girlfriend|husband|wife|crush|soulmate|ex\b)\b/i;
+// A relationship keyword alone isn't enough — "how is Anthony & Jacob's relationship" is about
+// two other people, not the querent. Require first-person framing too.
+const FIRST_PERSON_RE = /\b(i|me|my|our|we|us)\b/i;
 // Does the "other" court card read as the querent's partner here, or just as a significant figure?
 // True only if the question is relationship-shaped, or a Heart/Ring/Anchor sits among its neighbors.
 function isPartnerContext(question, neighborIds) {
-  if (question && RELATIONSHIP_RE.test(question)) return true;
+  if (question && RELATIONSHIP_RE.test(question) && FIRST_PERSON_RE.test(question)) return true;
   return neighborIds.some(id => PARTNER_SIGNAL_S.has(id));
 }
 // Shared yes/no gate: only questions phrased as a direct yes/no ask get a verdict word.
@@ -2611,7 +2614,7 @@ ${cardList}
 Begin with the significator's position.`;
   const prompt = isGT ? gtPrompt : is9 ? `You are an expert Lenormand reader. You are reading a 9-card square (petit tableau).
 
-The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is relationship-oriented, or if Heart, Ring, or Anchor sits near it in the grid. Do not assert more significance for this card than the geometry and the question actually support.
+The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is about the querent's OWN relationship (phrased with "my", "our", "we", "us"), or if Heart, Ring, or Anchor sits near it in the grid. A question about someone else's relationship (e.g. "how is X and Y's relationship") is NOT about the querent's partner — do not apply partner framing to third-party questions. Do not assert more significance for this card than the geometry and the question actually support.
 
 Grid layout (positions 1–9, left to right, top to bottom):
 1 | 2 | 3
@@ -2652,7 +2655,7 @@ ${cardList}
 
 Begin with the center card.` : `You are an expert Lenormand reader in the traditional Germanic cartomancy method.
 
-The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in this line, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is relationship-oriented, or if Heart, Ring, or Anchor sits adjacent to it in the line.
+The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in this line, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is about the querent's OWN relationship (phrased with "my", "our", "we", "us"), or if Heart, Ring, or Anchor sits adjacent to it in the line. A question about someone else's relationship (e.g. "how is X and Y's relationship") is NOT about the querent's partner — do not apply partner framing to third-party questions.
 
 Lenormand reading rules (follow strictly):
 1. Lenormand cards derive their meaning through combination with their neighbors. Never read a card in isolation — always state what the card means in context of what flanks it.
