@@ -2719,7 +2719,10 @@ Begin directly with the most telling combination.`;
     const data = await response.json();
     if (!response.ok) throw new Error(`api_error_${response.status}: ${data?.error?.message || "unknown"}`);
     const text = data?.content?.find?.(b => b.type === "text")?.text;
-    if (!text) throw new Error("no_text");
+    if (!text) {
+      const blockTypes = Array.isArray(data?.content) ? data.content.map(b => b.type).join(",") : "no_content_array";
+      throw new Error(`no_text: stop_reason=${data?.stop_reason || "?"} blocks=[${blockTypes}]`);
+    }
     const truncated = data?.stop_reason === "max_tokens";
     return {
       text: truncated ? `${text}\n\n[This reading was cut off before finishing — please try again.]` : text,
