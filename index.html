@@ -2340,9 +2340,11 @@ function staticSquareReading(cards, question, CORE_SHORT, sigId = 28) {
     parts.push(`The ${cards[otherCardIdx].name} — ${otherRole9}, here — falls in the ${["top", "middle", "bottom"][row]} row, ${["left", "center", "right"][col]} column.${sigCardIdx !== -1 ? ` That is ${Math.abs(row - Math.floor(sigCardIdx / 3)) + Math.abs(col - sigCardIdx % 3)} step${Math.abs(row - Math.floor(sigCardIdx / 3)) + Math.abs(col - sigCardIdx % 3) === 1 ? "" : "s"} from the querent's own position.` : ""}`);
   }
 
-  // Verdict: center (x2) + corners + bottom row
-  const score = w(center.id) * 2 + cornerCharge + rows[2].reduce((s, c) => s + w(c.id), 0);
-  const verdict = score >= 3 ? "The square resolves constructively — center, frame, and foundation align toward the positive." : score <= -3 ? "The square leans heavy — center, frame, and foundation carry the difficulty together." : score > 0 ? "The square leans constructive, though not without complication along the way." : score < 0 ? "The square leans difficult, though the frame holds openings." : "The square is balanced — the matter is genuinely still in motion, and the geometry refuses a verdict.";
+  // Verdict: every card on the board, not a cherry-picked subset — with a modest bonus
+  // for the center's own weight, since it structurally carries the most (every axis passes through it).
+  const netAll = cards.reduce((s, c) => s + w(c.id), 0);
+  const score = netAll + w(center.id);
+  const verdict = score >= 3 ? "The square resolves constructively — the balance across the whole board leans clearly positive." : score <= -3 ? "The square leans heavy — the balance across the whole board carries real difficulty." : score > 0 ? "The square leans constructive on balance, though not without real complication along the way." : score < 0 ? "The square leans difficult on balance, though not without some real openings." : "The square is balanced — light and shadow sit close to even, and the geometry genuinely refuses a clean verdict.";
   parts.push(verdict);
   return parts.join("\n\n");
 }
@@ -2691,7 +2693,8 @@ Begin directly with the most telling combination.`;
       headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutMs = isGT ? 60000 : is9 ? 45000 : 30000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
       response = await fetch("https://api.anthropic.com/v1/messages", {
