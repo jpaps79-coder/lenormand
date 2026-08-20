@@ -1,4 +1,4 @@
-const CACHE = "lenormand-v37";
+const CACHE = "lenormand-v38";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("message", (e) => {

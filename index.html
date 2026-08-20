@@ -3197,6 +3197,7 @@ function LenormandOracle() {
       return "";
     }
   });
+  const [showKey, setShowKey] = useState(false);
   const spread = SPREADS[spreadKey];
   function looksLikeTypo(q) {
     if (!q || q.trim().length === 0) return false;
@@ -3509,13 +3510,17 @@ function LenormandOracle() {
       fontStyle: "italic",
       marginBottom: "14px"
     }
-  }, "Paste an Anthropic API key to enable AI readings. The key is stored only in this browser, on this device — it is never uploaded anywhere except directly to Anthropic when a reading is drawn. Without a key, readings use the built-in traditional engine."), /*#__PURE__*/React.createElement("input", {
-    type: "password",
+  }, "Paste an Anthropic API key to enable AI readings. The key is stored only in this browser, on this device — it is never uploaded anywhere except directly to Anthropic when a reading is drawn. Without a key, readings use the built-in traditional engine."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: showKey ? "text" : "password",
     value: apiKey,
     placeholder: "sk-ant-...",
     autoComplete: "off",
     onChange: e => {
-      const v = e.target.value.trim();
+      const v = e.target.value.replace(/\s+/g, "");
       setApiKey(v);
       try {
         v ? localStorage.setItem("lenormand_api_key", v) : localStorage.removeItem("lenormand_api_key");
@@ -3524,7 +3529,7 @@ function LenormandOracle() {
     style: {
       width: "100%",
       boxSizing: "border-box",
-      padding: "10px 14px",
+      padding: "10px 44px 10px 14px",
       fontSize: "13px",
       fontFamily: "monospace",
       background: "rgba(255,255,255,.5)",
@@ -3533,14 +3538,31 @@ function LenormandOracle() {
       color: "#2a1f0e",
       outline: "none"
     }
-  }), apiKey && /*#__PURE__*/React.createElement("p", {
+  }), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setShowKey(s => !s),
+    style: {
+      position: "absolute",
+      right: "8px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      background: "none",
+      border: "none",
+      fontSize: "11px",
+      fontFamily: "'Cinzel',serif",
+      letterSpacing: "1px",
+      color: "rgba(40,25,5,.55)",
+      cursor: "pointer",
+      padding: "4px 6px"
+    }
+  }, showKey ? "HIDE" : "SHOW")), apiKey && /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: "11px",
       color: "rgba(40,25,5,.5)",
       marginTop: "10px",
       fontStyle: "italic"
     }
-  }, "Key saved. Clear the field to remove it."))), (phase === "cards" || phase === "reading") && /*#__PURE__*/React.createElement("div", null, question && /*#__PURE__*/React.createElement("p", {
+  }, "Key saved (", apiKey.length, " characters). Tap SHOW to verify it, or clear the field to remove it."))), (phase === "cards" || phase === "reading") && /*#__PURE__*/React.createElement("div", null, question && /*#__PURE__*/React.createElement("p", {
     style: {
       textAlign: "center",
       fontStyle: "italic",
