@@ -2723,7 +2723,7 @@ Begin directly with the most telling combination.`;
     // the way it did when left uncapped.
     // Effort levels are "soft guidance," not a hard cap — thinking length varies draw to draw
     // even at the same effort setting, so give real headroom past the typical case.
-    const timeoutMs = isGT ? 150000 : is9 ? 90000 : is5 ? 55000 : 50000;
+    const timeoutMs = isGT ? 200000 : is9 ? 130000 : is5 ? 55000 : 50000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
@@ -2733,12 +2733,15 @@ Begin directly with the most telling combination.`;
         signal: controller.signal,
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: isGT ? 10000 : is9 ? 6000 : is5 ? 3500 : 3000,
+          max_tokens: isGT ? 20000 : is9 ? 9000 : is5 ? 3500 : 3000,
           thinking: {
             type: "adaptive"
           },
+          // GT restored to "high" effort with a much larger ceiling (20k tokens) — the two prior
+          // failures happened at a 10k ceiling, which may simply not have been enough room, not
+          // proof that "high" is unworkable. Cost isn't the constraint here; reliability is.
           output_config: {
-            effort: isGT ? "high" : is9 ? "medium" : "low"
+            effort: isGT ? "high" : is9 ? "high" : "low"
           },
           messages: [{
             role: "user",
