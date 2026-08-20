@@ -2593,15 +2593,31 @@ async function generateReading(cards, positions, spreadLabel, question, sigId = 
   const questionIsYesNo = isYesNo(question);
   const verdictInstruction = question ? questionIsYesNo ? `The question is phrased as a direct yes/no ask. Your final paragraph MUST open with one word: Yes, Qualified yes, Qualified no, No, or Unclear — then the reasoning.` : `The question is open-ended, not yes/no (it asks what/how/describe, not will/is/does). Do NOT open the final paragraph with Yes, No, or Qualified — that would misrepresent an open question as a verdict. Instead, close with a direct descriptive statement of what the cards show.` : `No question was asked. Close with a direct descriptive statement of what the cards show — no Yes/No verdict language.`;
   const cardList = isGT ? cards.map((c, i) => `Position ${i + 1}${i < 32 ? ` (House of the ${NAME_BY_ID[i + 1]})` : ` (Fate card ${i - 31}, House of the ${NAME_BY_ID[i + 1]})`}: ${c.name} — ${c.key}`).join("\n") : is9 ? cards.map((c, i) => `Position ${i + 1}: ${c.name} — ${c.key}`).join("\n") : cards.map((c, i) => `${positions[i]}: ${c.name} — ${c.key}`).join("\n");
+
+  // Pre-compute exact positions so the model never has to search a long card list and risk
+  // misplacing the significator — this was a real, observed failure mode on the Grand Tableau.
+  const otherCourtId = sigId === 28 ? 29 : 28;
+  const sigFoundIdx = cards.findIndex(c => c.id === sigId);
+  const otherFoundIdx = cards.findIndex(c => c.id === otherCourtId);
+  const sigName = sigId === 28 ? "Man" : "Woman";
+  const otherName = sigId === 28 ? "Woman" : "Man";
+  const posNote = (label, idx) => {
+    if (idx === -1) return `${label} does not appear in this draw.`;
+    const pos = idx + 1;
+    return `${label} is at position ${pos}${pos > 32 ? " — among the four fate cards, NOT in the main 8×4 grid" : ""}.`;
+  };
+  const positionFacts = isGT ? `EXACT POSITIONS IN THIS DRAW (use these numbers directly — do not re-search the list, do not recompute): The ${posNote(sigName, sigFoundIdx)} The ${posNote(otherName, otherFoundIdx)}` : is9 ? `EXACT POSITIONS IN THIS DRAW: The ${posNote(sigName, sigFoundIdx)} The ${posNote(otherName, otherFoundIdx)}` : "";
   const gtPrompt = `You are an expert Lenormand reader. You are reading a Grand Tableau — all 36 cards.
 
 Layout: positions 1–32 form an 8×4 grid (8 columns, 4 rows, left to right, top to bottom). Positions 33–36 are the four fate cards laid beneath the grid.
 
 The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. The ${sigId === 28 ? "Woman (29)" : "Man (28)"} represents a significant other person in the querent's life, read by their distance and direction from the significator.
 
+${positionFacts}
+
 Grand Tableau method (follow strictly):
 1. Position 1 is the keynote — the theme under which the whole tableau falls. Open with it briefly, then locate the significator.
-2. The significator's position is the querent's position in life right now. Cards left of it lie behind (past, what is departing); cards right of it lie ahead. Cards above weigh on the querent's mind; cards below are what the querent stands on and commands. The significator's own row is the querent's timeline — read the cards ahead on that row as an unfolding sequence of fused pairs.
+2. Use the exact position numbers given above — do not re-derive them by scanning the card list yourself. The significator's position is the querent's position in life right now. Cards left of it lie behind (past, what is departing); cards right of it lie ahead. Cards above weigh on the querent's mind; cards below are what the querent stands on and commands. The significator's own row is the querent's timeline — read the cards ahead on that row as an unfolding sequence of fused pairs. If the significator's position is 33 or higher, it fell among the fate cards, not the main grid — this is significant and rare: the querent stands inside what is fated rather than inside the field of play, and the usual row/column/neighbor geometry does not apply. Say so plainly rather than inventing a grid position for it.
 3. Read the cards immediately touching the significator first — these are the querent's present reality. Fuse each with the significator directionally. Knight from the significator (chess knight moves) for the indirect currents of the matter.
 4. Each position is also a house (position N = house of card N; positions 33–36 are the houses of Key, Fish, Anchor, Cross). A card takes color from the house it occupies. Note the significator's house and any card fallen in its own house (full dignity).
 5. Locate the topic cards for the great domains — Heart (love), Fish (money), Fox (work), Tree (health) — plus any card named by the question. For each relevant domain read BOTH directions: what house the topic card occupies (how the domain is colored), and what card occupies the topic's own house (what currently shapes that domain). Distance from the significator is how active the domain is now.
@@ -2619,6 +2635,8 @@ ${cardList}
 
 Begin with the significator's position.`;
   const prompt = isGT ? gtPrompt : is9 ? `You are an expert Lenormand reader. You are reading a 9-card square (petit tableau).
+
+${positionFacts}
 
 The querent's significator is the ${sigId === 28 ? "Man (28)" : "Woman (29)"}. If the ${sigId === 28 ? "Woman (29)" : "Man (28)"} also appears in the spread, treat it as a significant figure in the querent's life by default — read it as the querent's partner only if the question is about the querent's OWN relationship (phrased with "my", "our", "we", "us"), or if Heart, Ring, or Anchor is genuinely adjacent to it off-center. A question about someone else's relationship (e.g. "how is X and Y's relationship") is NOT about the querent's partner — do not apply partner framing to third-party questions. Note: the center cell touches all eight other cells in this grid — if Heart, Ring, or Anchor happens to occupy the center, that alone does NOT count as "near" for this purpose, since it would trivially apply to every card on the board. Do not assert more significance for this card than the geometry and the question actually support.
 
@@ -2643,7 +2661,7 @@ These position names (frame, mirror, receding column, etc.) are for your own ana
 
 Lenormand reading rules:
 1. Cards do not have independent meanings — they derive meaning through combination with neighbors. Read pairs and triplets, not individual cards.
-2. If the significator's court-card counterpart appears, identify its row and column and read it per the partner-context rule above — do not default to calling it a partner or otherwise inflating its importance beyond what the position and question support.
+2. Use the exact position numbers given above — do not re-derive them by scanning the card list yourself. If the significator's court-card counterpart appears, identify its row and column and read it per the partner-context rule above — do not default to calling it a partner or otherwise inflating its importance beyond what the position and question support.
 3. Begin with the center card — it is the fulcrum. Then the frame, then mirrors, then the rows and columns that matter most. Do not walk the cards in numerical order.
 4. Read the top row, middle row, and bottom row each as their own fused horizontal sequence, not just as isolated corner/frame cards or a single bottom-row summary — a fast, self-resolving pattern in the top row (e.g. something new closing quickly) is just as real a signal as anything in the bottom row.
 5. Do not invent named positions. Do not label cards as "hidden" or "outcome." Use only geometric language, translated into plain description per the rule above.
@@ -2700,7 +2718,10 @@ Begin directly with the most telling combination.`;
       headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
     const controller = new AbortController();
-    const timeoutMs = isGT ? 90000 : is9 ? 50000 : is5 ? 35000 : 30000;
+    // Thinking is on with a fixed budget — enough room to work out the grid geometry
+    // correctly before writing, without letting reasoning consume the whole response
+    // the way it did when left uncapped.
+    const timeoutMs = isGT ? 110000 : is9 ? 70000 : is5 ? 50000 : 45000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
@@ -2710,9 +2731,10 @@ Begin directly with the most telling combination.`;
         signal: controller.signal,
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: isGT ? 3500 : is9 ? 3000 : is5 ? 2000 : 1500,
+          max_tokens: isGT ? 5500 : is9 ? 4500 : is5 ? 3000 : 2500,
           thinking: {
-            type: "disabled"
+            type: "enabled",
+            budget_tokens: isGT ? 2000 : is9 ? 1500 : 1024
           },
           messages: [{
             role: "user",
