@@ -2733,8 +2733,10 @@ Begin directly with the most telling combination.`;
           model: "claude-sonnet-5",
           max_tokens: isGT ? 5500 : is9 ? 4500 : is5 ? 3000 : 2500,
           thinking: {
-            type: "enabled",
-            budget_tokens: isGT ? 2000 : is9 ? 1500 : 1024
+            type: "adaptive"
+          },
+          output_config: {
+            effort: isGT ? "high" : is9 ? "medium" : "low"
           },
           messages: [{
             role: "user",
