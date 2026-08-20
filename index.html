@@ -2721,7 +2721,9 @@ Begin directly with the most telling combination.`;
     // Thinking is on with a fixed budget — enough room to work out the grid geometry
     // correctly before writing, without letting reasoning consume the whole response
     // the way it did when left uncapped.
-    const timeoutMs = isGT ? 110000 : is9 ? 70000 : is5 ? 50000 : 45000;
+    // Effort levels are "soft guidance," not a hard cap — thinking length varies draw to draw
+    // even at the same effort setting, so give real headroom past the typical case.
+    const timeoutMs = isGT ? 150000 : is9 ? 90000 : is5 ? 55000 : 50000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
@@ -2731,7 +2733,7 @@ Begin directly with the most telling combination.`;
         signal: controller.signal,
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: isGT ? 5500 : is9 ? 4500 : is5 ? 3000 : 2500,
+          max_tokens: isGT ? 10000 : is9 ? 6000 : is5 ? 3500 : 3000,
           thinking: {
             type: "adaptive"
           },
